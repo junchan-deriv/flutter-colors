@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:navigation_tests/int_slider.dart';
+import 'package:scribble/scribble.dart';
 
 class PickColorPage extends StatefulWidget {
   static const String route = "/pick_color";
@@ -10,12 +11,27 @@ class PickColorPage extends StatefulWidget {
 }
 
 class _PickColorPageState extends State<PickColorPage> {
-  int _r = 0, _g = 0, _b = 0;
+  Color selectedColor = const Color.fromARGB(255, 0, 0, 0);
+
+  ///Color masks
+  List<int> masks = [0xFF00FFFF, 0xFFFF00FF, 0xFFFFFF00];
+  List<int> shifts = [16, 8, 0];
+  List<String> colors = ["Red", "Green", "Blue"];
+  List<MaterialAccentColor> accent = [
+    Colors.redAccent,
+    Colors.greenAccent,
+    Colors.blueAccent
+  ];
+  ScribbleNotifier notifier = ScribbleNotifier();
+  @override
+  void dispose() {
+    notifier.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    //construct the color from the rgb
-    final Color selected = Color.fromARGB(255, _r, _g, _b);
+    notifier.setColor(selectedColor);
     return Scaffold(
         appBar: AppBar(
           centerTitle: true,
@@ -27,56 +43,51 @@ class _PickColorPageState extends State<PickColorPage> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text("Red:"),
-                IntSlider(
-                  value: _r,
-                  max: 255,
-                  divisions: 256,
-                  onChanged: (v) {
-                    setState(() {
-                      _r = v;
-                    });
-                  },
-                  colorScheme: Colors.redAccent,
-                ),
-                const Text("Green:"),
-                IntSlider(
-                  value: _g,
-                  max: 255,
-                  divisions: 256,
-                  onChanged: (v) {
-                    setState(() {
-                      _g = v;
-                    });
-                  },
-                  colorScheme: Colors.greenAccent,
-                ),
-                const Text("Blue:"),
-                IntSlider(
-                  value: _b,
-                  max: 255,
-                  divisions: 256,
-                  onChanged: (v) {
-                    setState(() {
-                      _b = v;
-                    });
-                  },
-                  colorScheme: Colors.blueAccent,
-                ),
+                SizedBox(
+                    height: 200,
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: 3,
+                      itemBuilder: (context, index) {
+                        return Wrap(children: [
+                          Text("${colors[index]}:"),
+                          IntSlider(
+                            value: (selectedColor.value & ~masks[index]) >>
+                                shifts[index],
+                            max: 255,
+                            divisions: 256,
+                            onChanged: (v) {
+                              setState(() {
+                                selectedColor = Color(
+                                    selectedColor.value & (masks[index]) |
+                                        (v << shifts[index]));
+                              });
+                            },
+                            colorScheme: accent[index],
+                          ),
+                        ]);
+                      },
+                    )),
                 const Text("Selected color:"),
                 Container(
-                  margin: const EdgeInsets.all(10),
+                    margin: const EdgeInsets.all(10),
                     decoration: ShapeDecoration(
-                      color: selected,
+                      color: selectedColor,
                       shape: const CircleBorder(),
                     ),
                     width: 100,
                     height: 100),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).pop(selected);
+                    Navigator.of(context).pop(selectedColor);
                   },
                   child: const Text("Select this color"),
+                ),
+                Expanded(
+                  child: ClipRect(
+                    clipBehavior: Clip.hardEdge,
+                    child: Scribble(notifier: notifier),
+                  ),
                 ),
               ],
             )));
